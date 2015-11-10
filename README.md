@@ -10,7 +10,6 @@ A nice Gulp Boilerplate for Front-End Development
 - Optimize Images
 - Run Tests with Mocha
 - Include Partials (@@include) or Templates (%%include)
-- 
 
 ## Build Commands
 ### Debug Mode
