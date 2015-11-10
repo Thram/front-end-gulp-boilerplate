@@ -1,3 +1,9 @@
+/**
+ * Created by Thram on 10/11/15.
+ * 
+ * Enjoy!
+ */
+
 'use strict';
 
 var browserify  = require('browserify'),
