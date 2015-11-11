@@ -20,3 +20,7 @@ gulp
 ```javascript
 gulp -r // gulp --release
 ```
+### Live Development
+```javascript
+gulp live
+```
