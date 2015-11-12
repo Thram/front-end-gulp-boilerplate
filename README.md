@@ -1,5 +1,12 @@
 # Front-End Gulp Boilerplate
 A nice Gulp Boilerplate for Front-End Development
+## Setup:
+Just clone the repository or download and run:
+```javascript
+npm install
+```
+
+Happy Coding!
 
 ## Includes:
 - Browserify
