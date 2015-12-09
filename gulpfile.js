@@ -1,6 +1,6 @@
 /**
  * Created by Thram on 10/11/15.
- * 
+ *
  * Enjoy!
  */
 
@@ -25,7 +25,7 @@ var browserify  = require('browserify'),
     sync        = require('gulp-sync')(gulp),
     sass        = require('gulp-sass'),
     imagemin    = require('gulp-imagemin'),
-    mocha       = require('gulp-mocha');
+    karma       = require('karma').Server;
 
 var tasks = {
   // Clean
@@ -82,20 +82,20 @@ var tasks = {
     return gulp.src('./src/assets/**/*.{gif,jpg,png,svg}')
       .pipe(imagemin({
         progressive      : true,
-        svgoPlugins      : [{removeViewBox: false}],
+        svgoPlugins: [{removeViewBox: false}],
         // png optimization
         optimizationLevel: argv.r || argv.release ? 3 : 1
       }))
       .pipe(gulp.dest('./dist/assets/'));
   },
-  // Tests with Mocha
-  test        : function () {
-    return gulp.src('./src/scripts/tests/**/*.js', {read: false})
-      .pipe(mocha({
-        'ui'      : 'bdd',
-        'reporter': 'spec'
-      })
-    );
+  // Tests with Jasmine
+  test        : function (done) {
+    return karma.start({
+      configFile: __dirname + '/karma.conf.js',
+      singleRun : !(argv.w || argv.watch)
+    }, function (res) {
+      done();
+    });
   },
   // Watchers
   watch       : function () {

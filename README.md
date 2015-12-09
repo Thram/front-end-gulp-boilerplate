@@ -15,7 +15,7 @@ Happy Coding!
 - Source Maps for JS & CSS on Debug Mode
 - JS Lint
 - Optimize Images
-- Run Tests with Mocha
+- Run Tests with Jasmine
 - Include Partials (@@include) or Templates (%%include)
 
 ## Build Commands
@@ -29,5 +29,13 @@ gulp -r // gulp --release
 ```
 ### Live Development
 ```javascript
-gulp live
+gulp live 
+// Live on Release Mode
+gulp live -r // gulp live --release
+```
+### Tests
+```javascript
+gulp test
+// Watch Mode
+gulp test -w // gulp test --watch
 ```
