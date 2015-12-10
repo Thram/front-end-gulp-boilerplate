@@ -1,5 +1,5 @@
 # Front-End Gulp Boilerplate
-A nice Gulp Boilerplate for Front-End Development
+A nice Gulp Boilerplate for Front-End Development using RiotJS (http://riotjs.com/)
 ## Setup:
 Just clone the repository or download and run:
 ```javascript
@@ -9,6 +9,7 @@ npm install
 Happy Coding!
 
 ## Includes:
+- RiotJS
 - Browserify
 - Sass
 - Browser Sync
