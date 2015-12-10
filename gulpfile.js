@@ -7,6 +7,7 @@
 'use strict';
 
 var browserify  = require('browserify'),
+    riotify     = require('riotify'),
     gulp        = require('gulp'),
     source      = require('vinyl-source-stream'),
     buffer      = require('vinyl-buffer'),
@@ -34,7 +35,7 @@ var tasks = {
   },
   // Layouts
   layouts     : function () {
-    return gulp.src('src/layouts/index.html')
+    return gulp.src('src/index.html')
       .pipe(fileInclude({
         template: '<script type="text/template" id="@filename"> @content </script>'
       }))
@@ -52,7 +53,7 @@ var tasks = {
       debug  : !(argv.r || argv.release)
     });
 
-    return b.bundle()
+    return b.transform(riotify).bundle()
       .pipe(source('bundle.min.js'))
       .pipe(buffer())
       .pipe(gulpif(!(argv.r || argv.release), sourcemaps.init({loadMaps: true})))
@@ -100,8 +101,9 @@ var tasks = {
   // Watchers
   watch       : function () {
     var src  = {
-      layouts    : 'src/layouts/**/*.html',
+      layouts    : 'src/index.html',
       stylesheets: 'src/stylesheets/**/*.scss',
+      tags       : 'src/tags/**/*.tag',
       scripts    : 'src/scripts/**/*.js'
     };
     var dist = {
@@ -111,7 +113,7 @@ var tasks = {
     };
 
     gulp.watch([src.layouts], ['layouts']);
-    gulp.watch([src.scripts], ['lint', 'scripts']);
+    gulp.watch([src.scripts, src.tags], ['lint', 'scripts']);
     gulp.watch([src.stylesheets], ['stylesheets']);
     gulp.watch([dist.html, dist.js]).on('change', browserSync.reload);
   },

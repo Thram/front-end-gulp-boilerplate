@@ -1,5 +1,5 @@
 // Write Your Jasmine Test Here
-var Convert = require('../example.convert.js');
+var Convert = require('../../example/convert.js');
 describe("volume converter", function () {
   it("converts litres to gallons", function () {
     expect(Convert(3, "litres").to("gallons")).toEqual(0.79); // <--- This should fail!! Find the bug and fix it!! :D
