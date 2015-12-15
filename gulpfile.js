@@ -21,7 +21,7 @@ var browserify  = require('browserify'),
     fileInclude = require('gulp-file-include'),
     browserSync = require('browser-sync').create(),
     jshint      = require('gulp-jshint'),
-    stylish     = require('jshint-stylish'),
+    uglify      = require('gulp-uglify'),
     sync        = require('gulp-sync')(gulp),
     sass        = require('gulp-sass'),
     imagemin    = require('gulp-imagemin'),
@@ -39,8 +39,9 @@ var tasks = {
         template: '<script type="text/template" id="@filename"> @content </script>'
       }))
       .pipe(htmlreplace({
-        'css': 'css/styles.min.css',
-        'js' : 'js/bundle.min.js'
+        'css'   : 'css/styles.min.css',
+        'vendor': 'js/vendor.min.js',
+        'js'    : 'js/bundle.min.js'
       }))
       .pipe(gulp.dest('dist/'));
   },
@@ -62,9 +63,15 @@ var tasks = {
       .pipe(gulpif(!(argv.r || argv.release), sourcemaps.write()))
       .pipe(gulp.dest('./dist/js/'));
   },
+  vendor      : function () {
+    return gulp.src('./src/scripts/vendor/**/*.js')
+      .pipe(uglify())
+      .pipe(rename('vendor.min.js'))
+      .pipe(gulp.dest('./dist/js/'))
+  },
   // Lint Task
   lint        : function () {
-    return gulp.src('src/scripts/**/*.js')
+    return gulp.src(['src/scripts/**/*.js', '!src/scripts/vendor/**/*.js'])
       .pipe(jshint({expr: true}))
       .pipe(jshint.reporter('jshint-stylish'));
   },
@@ -136,8 +143,9 @@ gulp.task('stylesheets', tasks.stylesheets);
 gulp.task('optimize', tasks.optimize);
 gulp.task('test', tasks.test);
 gulp.task('watch', tasks.watch);
+gulp.task('vendor', tasks.vendor);
 gulp.task('browser_sync', tasks.browser_sync);
 
 // Build tasks
-gulp.task('default', sync.sync(['clean', ['stylesheets', 'optimize', 'lint', 'scripts', 'layouts']]));
-gulp.task('live', sync.sync(['clean', ['stylesheets', 'optimize', 'lint', 'scripts', 'layouts'], 'browser_sync', 'watch']));
+gulp.task('default', sync.sync(['clean', ['stylesheets', 'optimize', 'lint', 'vendor', 'scripts', 'layouts']]));
+gulp.task('live', sync.sync(['clean', ['stylesheets', 'optimize', 'lint', 'vendor', 'scripts', 'layouts'], 'browser_sync', 'watch']));
