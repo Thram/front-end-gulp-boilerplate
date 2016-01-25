@@ -36,7 +36,11 @@ var tasks = {
   layouts     : function () {
     return gulp.src('src/layouts/index.html')
       .pipe(fileInclude({
+        prefix: '%%',
         template: '<script type="text/template" id="@filename"> @content </script>'
+      }))
+      .pipe(fileInclude({
+        prefix: '@@'
       }))
       .pipe(htmlreplace({
         'css'   : 'css/styles.min.css',
