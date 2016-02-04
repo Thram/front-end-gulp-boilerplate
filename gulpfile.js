@@ -7,11 +7,13 @@
 'use strict';
 
 var browserify  = require('browserify'),
+    watchify    = require('watchify'),
     gulp        = require('gulp'),
     source      = require('vinyl-source-stream'),
     buffer      = require('vinyl-buffer'),
     rename      = require('gulp-rename'),
     uglify      = require('gulp-uglify'),
+    concat      = require('gulp-concat'),
     sourcemaps  = require('gulp-sourcemaps'),
     gutil       = require('gulp-util'),
     htmlreplace = require('gulp-html-replace'),
@@ -21,12 +23,16 @@ var browserify  = require('browserify'),
     fileInclude = require('gulp-file-include'),
     browserSync = require('browser-sync').create(),
     jshint      = require('gulp-jshint'),
-    uglify      = require('gulp-uglify'),
     sync        = require('gulp-sync')(gulp),
     sass        = require('gulp-sass'),
+    fontgen     = require('gulp-fontgen'),
     imagemin    = require('gulp-imagemin'),
     karma       = require('karma').Server;
-
+// set up the browserify instance on a task basis
+var b     = watchify(browserify({
+  entries: './src/scripts/app.js',
+  debug  : !(argv.r || argv.release)
+}));
 var tasks = {
   // Clean
   clean       : function (cb) {
@@ -36,11 +42,7 @@ var tasks = {
   layouts     : function () {
     return gulp.src('src/layouts/index.html')
       .pipe(fileInclude({
-        prefix: '%%',
         template: '<script type="text/template" id="@filename"> @content </script>'
-      }))
-      .pipe(fileInclude({
-        prefix: '@@'
       }))
       .pipe(htmlreplace({
         'css'   : 'css/styles.min.css',
@@ -51,26 +53,20 @@ var tasks = {
   },
   // Scripts
   scripts     : function () {
-    // set up the browserify instance on a task basis
-    var b = browserify({
-      entries: './src/scripts/app.js',
-      debug  : !(argv.r || argv.release)
-    });
-
     return b.bundle()
       .pipe(source('bundle.min.js'))
       .pipe(buffer())
       .pipe(gulpif(!(argv.r || argv.release), sourcemaps.init({loadMaps: true})))
       // Add transformation tasks to the pipeline here.
-      .pipe(uglify())
+      .pipe(gulpif((argv.r || argv.release), uglify()))
       .on('error', gutil.log)
       .pipe(gulpif(!(argv.r || argv.release), sourcemaps.write()))
       .pipe(gulp.dest('./dist/js/'));
   },
   vendor      : function () {
     return gulp.src('./src/scripts/vendor/**/*.js')
-      .pipe(uglify())
-      .pipe(rename('vendor.min.js'))
+      .pipe(concat('vendor.min.js'))
+      .pipe(gulpif((argv.r || argv.release), uglify()))
       .pipe(gulp.dest('./dist/js/'))
   },
   // Lint Task
@@ -93,11 +89,17 @@ var tasks = {
     return gulp.src('./src/assets/**/*.{gif,jpg,png,svg}')
       .pipe(imagemin({
         progressive      : true,
-        svgoPlugins: [{removeViewBox: false}],
+        svgoPlugins      : [{removeViewBox: false}],
         // png optimization
         optimizationLevel: argv.r || argv.release ? 3 : 1
       }))
       .pipe(gulp.dest('./dist/assets/'));
+  },
+  fonts       : function () {
+    return gulp.src("./src/assets/fonts/**/*.{ttf,otf}")
+      .pipe(gulpif(!(argv.f || argv.fonts), fontgen({
+        dest: "./dist/assets/fonts/"
+      })));
   },
   // Tests with Jasmine
   test        : function (done) {
@@ -145,11 +147,12 @@ gulp.task('scripts', tasks.scripts);
 gulp.task('lint', tasks.lint);
 gulp.task('stylesheets', tasks.stylesheets);
 gulp.task('optimize', tasks.optimize);
+gulp.task('fonts', tasks.fonts);
 gulp.task('test', tasks.test);
 gulp.task('watch', tasks.watch);
 gulp.task('vendor', tasks.vendor);
 gulp.task('browser_sync', tasks.browser_sync);
 
 // Build tasks
-gulp.task('default', sync.sync(['clean', ['stylesheets', 'optimize', 'lint', 'vendor', 'scripts', 'layouts']]));
-gulp.task('live', sync.sync(['clean', ['stylesheets', 'optimize', 'lint', 'vendor', 'scripts', 'layouts'], 'browser_sync', 'watch']));
+gulp.task('default', sync.sync(['clean', ['stylesheets', 'optimize', 'fonts', 'lint', 'vendor', 'scripts', 'layouts']]));
+gulp.task('live', sync.sync(['clean', ['stylesheets', 'optimize', 'fonts', 'lint', 'vendor', 'scripts', 'layouts'], 'browser_sync', 'watch']));
