@@ -1,4 +1,6 @@
 // Add your code
+require('loader');
+
 var settings = require('settings');
 var lang     = require('lang');
 var riot     = require('riot');
