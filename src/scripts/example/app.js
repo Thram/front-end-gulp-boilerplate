@@ -4,7 +4,7 @@ var riot       = require('riot'),
     appNavi    = require('../../tags/example/app-navi.tag');
 module.exports = function () {
   riot.route.base('/');
-  riot.mount('*');
+
   riot.route.start(true);
 };
 

@@ -8,7 +8,7 @@ module.exports = function (config) {
       'src/scripts/tests/**/*.js': ['browserify']
     },
     reporters    : ['spec'],
-    browsers     : ['PhantomJS'],
+    browsers     : ['Chrome'],
     files        : [
       'src/scripts/tests/**/*.js'
     ],

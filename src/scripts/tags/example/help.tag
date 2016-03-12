@@ -1,4 +1,4 @@
-<app-help>
+<help>
 
     <h2>Help</h2>
 
@@ -53,4 +53,4 @@
         }
     </style>
 
-</app-help>
+</help>

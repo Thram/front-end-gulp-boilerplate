@@ -1,8 +1,16 @@
-<app-navi>
+<navigation>
 
-    <a href="/">H</a>
-    <a href="#/first">F</a>
-    <a href="#/second">S</a>
+    <a onclick={set}>En</a>
+    <a onclick={set}>Es</a>
+    <a onclick={set}>Jp</a>
+
+    <script>
+        var self = this;
+        var lang = require('lang');
+        self.set = function (e) {
+            lang.change(e.target.innerHTML.toLowerCase());
+        }
+    </script>
 
     <style scoped>
         :scope {
@@ -18,9 +26,11 @@
             width: 50px;
             transition: width .2s;
         }
+
         :scope:hover {
             width: 60px;
         }
+
         a {
             display: block;
             box-sizing: border-box;
@@ -32,9 +42,10 @@
             text-decoration: none;
             background: #444;
         }
+
         a:hover {
             background: #666;
         }
     </style>
 
-</app-navi>
+</navigation>

@@ -6,97 +6,116 @@
 
 'use strict';
 
-var browserify  = require('browserify'),
-    riotify     = require('riotify'),
-    gulp        = require('gulp'),
-    source      = require('vinyl-source-stream'),
-    buffer      = require('vinyl-buffer'),
-    rename      = require('gulp-rename'),
-    uglify      = require('gulp-uglify'),
-    sourcemaps  = require('gulp-sourcemaps'),
-    gutil       = require('gulp-util'),
-    htmlreplace = require('gulp-html-replace'),
-    del         = require('del'),
-    gulpif      = require('gulp-if'),
-    argv        = require('yargs').argv,
-    fileInclude = require('gulp-file-include'),
-    browserSync = require('browser-sync').create(),
-    jshint      = require('gulp-jshint'),
-    uglify      = require('gulp-uglify'),
-    sync        = require('gulp-sync')(gulp),
-    sass        = require('gulp-sass'),
-    imagemin    = require('gulp-imagemin'),
-    karma       = require('karma').Server;
+var browserify     = require('browserify'),
+    watchify       = require('watchify'),
+    riotify        = require('riotify'),
+    browserifyData = require('browserify-data'),
+    gulp           = require('gulp'),
+    source         = require('vinyl-source-stream'),
+    buffer         = require('vinyl-buffer'),
+    rename         = require('gulp-rename'),
+    uglify         = require('gulp-uglify'),
+    sourcemaps     = require('gulp-sourcemaps'),
+    gutil          = require('gulp-util'),
+    htmlreplace    = require('gulp-html-replace'),
+    del            = require('del'),
+    gulpif         = require('gulp-if'),
+    argv           = require('yargs').argv,
+    fileInclude    = require('gulp-file-include'),
+    browserSync    = require('browser-sync').create(),
+    jshint         = require('gulp-jshint'),
+    stylish        = require('jshint-stylish'),
+    sync           = require('gulp-sync')(gulp),
+    sass           = require('gulp-sass'),
+    yaml           = require('gulp-yaml'),
+    imagemin       = require('gulp-imagemin'),
+    gzip           = require('gulp-gzip'),
+    karma          = require('karma').Server;
+
+var folders = {src: __dirname + '/src/', dst: __dirname + '/dist/', modules: __dirname + '/node_modules'};
 
 var tasks = {
   // Clean
   clean       : function (cb) {
-    return del(['dist/*'], cb);
+    return del([folders.dst + '*'], cb);
   },
   // Layouts
   layouts     : function () {
-    return gulp.src('src/index.html')
+    return gulp.src(folders.src + 'index.html')
       .pipe(fileInclude({
         template: '<script type="text/template" id="@filename"> @content </script>'
       }))
       .pipe(htmlreplace({
-        'css'   : 'css/styles.min.css',
-        'vendor': 'js/vendor.min.js',
-        'js'    : 'js/bundle.min.js'
+        'css': 'css/styles.min.css',
+        'js' : 'js/bundle.min.js'
       }))
-      .pipe(gulp.dest('dist/'));
+      .pipe(gulp.dest(folders.dst));
   },
   // Scripts
   scripts     : function () {
-    // set up the browserify instance on a task basis
-    var b = browserify({
-      entries: './src/scripts/app.js',
-      debug  : !(argv.r || argv.release)
-    });
+    var b = watchify(browserify({
+      paths  : [
+        folders.src + 'scripts',
+        folders.modules
+      ],
+      entries: folders.src + 'scripts/app.js',
+      debug  : !(argv.r || argv.release || argv.g || argv.gzip)
+    }).transform(browserifyData).transform(riotify));
 
-    return b.transform(riotify).bundle()
-      .pipe(source('bundle.min.js'))
-      .pipe(buffer())
-      .pipe(gulpif(!(argv.r || argv.release), sourcemaps.init({loadMaps: true})))
-      // Add transformation tasks to the pipeline here.
-      .pipe(uglify())
-      .on('error', gutil.log)
-      .pipe(gulpif(!(argv.r || argv.release), sourcemaps.write()))
-      .pipe(gulp.dest('./dist/js/'));
-  },
-  vendor      : function () {
-    return gulp.src('./src/scripts/vendor/**/*.js')
-      .pipe(uglify())
-      .pipe(rename('vendor.min.js'))
-      .pipe(gulp.dest('./dist/js/'))
+    b.on('update', bundle); // on any dep update, runs the bundler
+    b.on('log', gutil.log); // output build logs to terminal
+
+    function bundle() {
+      return b.bundle()
+        //has to be the first in the pipe!
+        .on('error', function (err) {
+          console.log(err.message);
+          this.emit("end");
+        })
+        .pipe(source('bundle.min.js'))
+        .pipe(buffer())
+        .pipe(gulpif(!(argv.r || argv.release || argv.g || argv.gzip), sourcemaps.init({loadMaps: true})))
+        // Add transformation tasks to the pipeline here.
+        .pipe(gulpif((argv.r || argv.release || argv.g || argv.gzip), uglify()))
+        .pipe(gulpif(!(argv.r || argv.release || argv.g || argv.gzip), sourcemaps.write()))
+        .pipe(gulpif((argv.g || argv.gzip), gzip()))
+        .pipe(gulp.dest(folders.dst + 'js/'));
+    }
+
+    return bundle();
   },
   // Lint Task
   lint        : function () {
-    return gulp.src(['src/scripts/**/*.js', '!src/scripts/vendor/**/*.js'])
+    return gulp.src(folders.src + 'scripts/**/*.js')
       .pipe(jshint({expr: true}))
       .pipe(jshint.reporter('jshint-stylish'));
   },
   // Stylesheets
   stylesheets : function () {
-    return gulp.src('src/stylesheets/app.scss')
-      .pipe(gulpif(!(argv.r || argv.release), sourcemaps.init({loadMaps: true})))
+    return gulp.src(folders.src + 'stylesheets/app.scss')
+      .pipe(gulpif(!(argv.r || argv.release || argv.g || argv.gzip), sourcemaps.init({loadMaps: true})))
       .pipe(sass({outputStyle: 'compressed'}).on('error', sass.logError))
       .pipe(rename('styles.min.css'))
-      .pipe(gulpif(!(argv.r || argv.release), sourcemaps.write()))
-      .pipe(gulp.dest('./dist/css/')).pipe(browserSync.stream());
+      .pipe(gulpif(!(argv.r || argv.release || argv.g || argv.gzip), sourcemaps.write()))
+      .pipe(gulp.dest(folders.dst + 'css/')).pipe(browserSync.stream());
   },
   // Optimize Images
   optimize    : function () {
-    return gulp.src('./src/assets/**/*.{gif,jpg,png,svg}')
+    return gulp.src(folders.src + 'assets/**/*.{gif,jpg,png,svg}')
       .pipe(imagemin({
         progressive      : true,
-        svgoPlugins: [{removeViewBox: false}],
+        svgoPlugins      : [{removeViewBox: false}],
         // png optimization
-        optimizationLevel: argv.r || argv.release ? 3 : 1
+        optimizationLevel: argv.r || argv.release || argv.g || argv.gzip ? 3 : 1
       }))
-      .pipe(gulp.dest('./dist/assets/'));
+      .pipe(gulp.dest(folders.dst + 'assets/'));
   },
   // Tests with Jasmine
+  lang        : function (done) {
+    return gulp.src(folders.src + 'scripts/lang/*.yaml')
+      .pipe(yaml({schema: 'DEFAULT_SAFE_SCHEMA'}))
+      .pipe(gulp.dest(folders.dst + 'js/lang/'));
+  },
   test        : function (done) {
     return karma.start({
       configFile: __dirname + '/karma.conf.js',
@@ -108,19 +127,23 @@ var tasks = {
   // Watchers
   watch       : function () {
     var src  = {
-      layouts    : 'src/index.html',
-      stylesheets: 'src/stylesheets/**/*.scss',
-      tags       : 'src/tags/**/*.tag',
-      scripts    : 'src/scripts/**/*.js'
+      layouts    : folders.src + 'index.html',
+      stylesheets: folders.src + 'stylesheets/**/*.scss',
+      tags       : folders.src + 'scripts/tags/**/*.tag',
+      scripts    : folders.src + 'scripts/**/*.js'
     };
     var dist = {
-      html: 'dist/index.html',
-      css : 'dist/css/styles.min.css',
-      js  : 'dist/js/bundle.min.js'
+      html: folders.dst + 'index.html',
+      css : folders.dst + 'css/styles.min.css',
+      js  : folders.dst + 'js/bundle.min.js'
     };
 
+    //b.on('update', function () {
+    //  tasks.scripts();
+    //});
+
     gulp.watch([src.layouts], ['layouts']);
-    gulp.watch([src.scripts, src.tags], ['lint', 'scripts']);
+    //gulp.watch([src.scripts, src.tags], ['lint', 'scripts']);
     gulp.watch([src.stylesheets], ['stylesheets']);
     gulp.watch([dist.html, dist.js]).on('change', browserSync.reload);
   },
@@ -128,26 +151,28 @@ var tasks = {
   browser_sync: function () {
     browserSync.init({
       server        : {
-        baseDir: 'dist'
+        baseDir: folders.dst
       },
       logLevel      : 'debug',
       logConnections: true
+    }, function (err, bs) {
+      if (argv.g || argv.gzip) {
+        var middleware = require('connect-gzip-static')(folders.dst);
+        bs.addMiddleware("*", middleware, {
+          override: true
+        });
+      }
+
     });
   }
 };
 
 // Register Tasks
-gulp.task('clean', tasks.clean);
-gulp.task('layouts', tasks.layouts);
-gulp.task('scripts', tasks.scripts);
-gulp.task('lint', tasks.lint);
-gulp.task('stylesheets', tasks.stylesheets);
-gulp.task('optimize', tasks.optimize);
-gulp.task('test', tasks.test);
-gulp.task('watch', tasks.watch);
-gulp.task('vendor', tasks.vendor);
-gulp.task('browser_sync', tasks.browser_sync);
+var task;
+for (task in tasks) {
+  gulp.task(task, tasks[task]);
+}
 
 // Build tasks
-gulp.task('default', sync.sync(['clean', ['stylesheets', 'optimize', 'lint', 'vendor', 'scripts', 'layouts']]));
-gulp.task('live', sync.sync(['clean', ['stylesheets', 'optimize', 'lint', 'vendor', 'scripts', 'layouts'], 'browser_sync', 'watch']));
+gulp.task('default', sync.sync(['clean', ['stylesheets', 'optimize', 'lang', 'lint', 'scripts', 'layouts']]));
+gulp.task('live', sync.sync(['clean', ['stylesheets', 'optimize', 'lang', 'lint', 'scripts', 'layouts'], 'browser_sync', 'watch']));
