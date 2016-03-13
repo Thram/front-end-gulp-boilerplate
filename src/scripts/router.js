@@ -3,52 +3,62 @@
  */
 var riot       = require('riot');
 var _          = require('lodash');
-var settings   = require('settings');
 var riotRouter = riot.route.create();
 
 function Router() {
-  var routes = settings.get('routes');
-  var self   = this;
+  var self          = this;
+  self.rootView     = 'root';
+  self.notFoundView = 'not-found';
   riot.observable(self);
-  var hash, params;
-  var _render = function () {
-    params = Array.prototype.slice.call(arguments);
-    hash   = window.location.hash || '#/';
+  var hash, params, routes, route, view, settings;
+  var render = function () {
+    params   = _.compact(Array.prototype.slice.call(arguments));
+    hash     = window.location.hash || '#/';
+    route    = _.difference(hash.replace('#', '').replace('/', '').split('/'), params);
+    view     = route.join('-') || (hash === '#/' ? self.rootView : self.notFoundView);
+    settings = getSettings();
     self.trigger('render', self.info());
   };
-  _.each(routes, function (value) {
-    riotRouter(value.url, _render);
-  });
-  riotRouter(_render);
 
-  self.validate = function (route, role) {
-    var routeSetting = _.find(routes, {url: route});
-    var valid        = false;
-    if (routeSetting)
-      valid = (!routeSetting.accept && !routeSetting.reject) || (routeSetting.accept && _.includes(routeSetting.accept, role)) || (routeSetting.reject && !_.includes(routeSetting.reject, role)) ? true : false;
+  var getSettings = function () {
+    var url = '#/' + (route || '') + (_.isEmpty(params) ? '' : '/*');
+    return _.find(routes, function (r) {
+      return r.url === url || (url === '#/' && (r.url === '#/' || r.url === '/'));
+    });
+  };
+
+  self.validate = function (role) {
+    var valid = false;
+    if (settings)
+      valid = (!settings.accept && !settings.reject) || (settings.accept && _.includes(settings.accept, role)) || (settings.reject && !_.includes(settings.reject, role)) ? true : false;
     return valid;
   };
 
   self.info = function () {
-    var view         = _.difference(hash.replace('#', '').replace('/', '').split('/'), params).join('-') || (hash === '#/' ? 'home' : 'not-found');
-    var url          = '#/' + view + (!_.isEmpty(params) ? '/*' : '');
-    var paramsObj    = {};
-    var routeSetting = _.find(routes, {url: url});
-    if (routeSetting && routeSetting.params) {
-      _.each(routeSetting.params, function (paramKey, index) {
+    var paramsObj = {};
+    if (settings && settings.params) {
+      _.each(settings.params, function (paramKey, index) {
         paramsObj[paramKey] = params[index];
       });
     }
 
     return {
       view  : view,
-      url   : url,
+      url   : settings ? settings.url : undefined,
       params: paramsObj
     };
   };
 
   self.go = function (route) {
     riot.route(route);
+  };
+
+  self.set = function (appRoutes) {
+    routes = appRoutes;
+    _.each(routes, function (value) {
+      riotRouter(value.url, render);
+    });
+    riotRouter(render);
   };
 }
 var router     = new Router();

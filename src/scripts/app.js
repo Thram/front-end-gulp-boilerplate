@@ -10,7 +10,8 @@ var routes = [
   {url: '/'}
 ];
 
-settings.set('routes', routes);
+router.set(routes);
+router.rootView = 'home';
 
 var app = function (update) {
   riot.mount('*');
