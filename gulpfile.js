@@ -6,33 +6,50 @@
 
 'use strict';
 
-var browserify     = require('browserify'),
-    watchify       = require('watchify'),
-    riotify        = require('riotify'),
-    browserifyData = require('browserify-data'),
-    gulp           = require('gulp'),
-    source         = require('vinyl-source-stream'),
-    buffer         = require('vinyl-buffer'),
-    rename         = require('gulp-rename'),
-    uglify         = require('gulp-uglify'),
-    sourcemaps     = require('gulp-sourcemaps'),
-    gutil          = require('gulp-util'),
-    htmlreplace    = require('gulp-html-replace'),
-    del            = require('del'),
-    gulpif         = require('gulp-if'),
-    argv           = require('yargs').argv,
-    fileInclude    = require('gulp-file-include'),
-    browserSync    = require('browser-sync').create(),
-    jshint         = require('gulp-jshint'),
-    stylish        = require('jshint-stylish'),
-    sync           = require('gulp-sync')(gulp),
-    sass           = require('gulp-sass'),
-    yaml           = require('gulp-yaml'),
-    imagemin       = require('gulp-imagemin'),
-    gzip           = require('gulp-gzip'),
-    karma          = require('karma').Server;
+var browserify   = require('browserify'),
+    watchify     = require('watchify'),
+    gulp         = require('gulp'),
+    source       = require('vinyl-source-stream'),
+    buffer       = require('vinyl-buffer'),
+    rename       = require('gulp-rename'),
+    uglify       = require('gulp-uglify'),
+    sourcemaps   = require('gulp-sourcemaps'),
+    gutil        = require('gulp-util'),
+    autoprefixer = require('gulp-autoprefixer'),
+    htmlreplace  = require('gulp-html-replace'),
+    del          = require('del'),
+    gulpif       = require('gulp-if'),
+    argv         = require('yargs').argv,
+    fileInclude  = require('gulp-file-include'),
+    browserSync  = require('browser-sync').create(),
+    jshint       = require('gulp-jshint'),
+    stylish      = require('jshint-stylish'),
+    sync         = require('gulp-sync')(gulp),
+    sass         = require('gulp-sass'),
+    yaml         = require('gulp-yaml'),
+    imagemin     = require('gulp-imagemin'),
+    gzip         = require('gulp-gzip'),
+    karma        = require('karma').Server;
 
 var folders = {src: __dirname + '/src/', dst: __dirname + '/dist/', modules: __dirname + '/node_modules'};
+
+var debug = !(argv.r || argv.release || argv.g || argv.gzip);
+
+var bundler = browserify({
+  paths       : [
+    folders.src + 'scripts',
+    folders.src + 'tags',
+    folders.modules
+  ],
+  entries     : folders.src + 'scripts/app.js',
+  transform   : ['browserify-data', 'riotify'],
+  debug       : debug,
+  cache       : {}, // <---- here is important things for optimization
+  packageCache: {}, // <----  and here
+  fullPaths   : debug
+}).plugin(watchify, {ignoreWatch: [folders.modules + '/**']});
+
+if (debug) bundler.on('log', gutil.log); // output build logs to terminal
 
 var tasks = {
   // Clean
@@ -53,36 +70,21 @@ var tasks = {
   },
   // Scripts
   scripts     : function () {
-    var b = watchify(browserify({
-      paths  : [
-        folders.src + 'scripts',
-        folders.modules
-      ],
-      entries: folders.src + 'scripts/app.js',
-      debug  : !(argv.r || argv.release || argv.g || argv.gzip)
-    }).transform(browserifyData).transform(riotify));
-
-    b.on('update', bundle); // on any dep update, runs the bundler
-    b.on('log', gutil.log); // output build logs to terminal
-
-    function bundle() {
-      return b.bundle()
-        //has to be the first in the pipe!
-        .on('error', function (err) {
-          console.log(err.message);
-          this.emit("end");
-        })
-        .pipe(source('bundle.min.js'))
-        .pipe(buffer())
-        .pipe(gulpif(!(argv.r || argv.release || argv.g || argv.gzip), sourcemaps.init({loadMaps: true})))
-        // Add transformation tasks to the pipeline here.
-        .pipe(gulpif((argv.r || argv.release || argv.g || argv.gzip), uglify()))
-        .pipe(gulpif(!(argv.r || argv.release || argv.g || argv.gzip), sourcemaps.write()))
-        .pipe(gulpif((argv.g || argv.gzip), gzip()))
-        .pipe(gulp.dest(folders.dst + 'js/'));
-    }
-
-    return bundle();
+    gutil.log('Processing bundle');
+    return bundler.bundle()
+      //has to be the first in the pipe!
+      .on('error', function (err) {
+        console.log(err.message);
+        this.emit("end");
+      })
+      .pipe(source('bundle.min.js'))
+      .pipe(buffer())
+      .pipe(gulpif(debug, sourcemaps.init({loadMaps: true})))
+      // Add transformation tasks to the pipeline here.
+      .pipe(gulpif((argv.r || argv.release || argv.g || argv.gzip), uglify()))
+      .pipe(gulpif(debug, sourcemaps.write()))
+      .pipe(gulpif((argv.g || argv.gzip), gzip()))
+      .pipe(gulp.dest(folders.dst + 'js/'));
   },
   // Lint Task
   lint        : function () {
@@ -93,10 +95,12 @@ var tasks = {
   // Stylesheets
   stylesheets : function () {
     return gulp.src(folders.src + 'stylesheets/app.scss')
-      .pipe(gulpif(!(argv.r || argv.release || argv.g || argv.gzip), sourcemaps.init({loadMaps: true})))
+      .pipe(gulpif(debug, sourcemaps.init({loadMaps: true})))
       .pipe(sass({outputStyle: 'compressed'}).on('error', sass.logError))
+      .pipe(autoprefixer({browsers: ['last 3 versions', 'ie >= 9']}))
       .pipe(rename('styles.min.css'))
-      .pipe(gulpif(!(argv.r || argv.release || argv.g || argv.gzip), sourcemaps.write()))
+      .pipe(gulpif(debug, sourcemaps.write()))
+      .pipe(gulpif((argv.g || argv.gzip), gzip()))
       .pipe(gulp.dest(folders.dst + 'css/')).pipe(browserSync.stream());
   },
   // Optimize Images
@@ -128,9 +132,7 @@ var tasks = {
   watch       : function () {
     var src  = {
       layouts    : folders.src + 'index.html',
-      stylesheets: folders.src + 'stylesheets/**/*.scss',
-      tags       : folders.src + 'scripts/tags/**/*.tag',
-      scripts    : folders.src + 'scripts/**/*.js'
+      stylesheets: folders.src + 'stylesheets/**/*.scss'
     };
     var dist = {
       html: folders.dst + 'index.html',
@@ -138,12 +140,9 @@ var tasks = {
       js  : folders.dst + 'js/bundle.min.js'
     };
 
-    //b.on('update', function () {
-    //  tasks.scripts();
-    //});
+    bundler.on('update', tasks.scripts); // on any dep update, runs the bundler
 
     gulp.watch([src.layouts], ['layouts']);
-    //gulp.watch([src.scripts, src.tags], ['lint', 'scripts']);
     gulp.watch([src.stylesheets], ['stylesheets']);
     gulp.watch([dist.html, dist.js]).on('change', browserSync.reload);
   },

@@ -17,7 +17,7 @@ function Router() {
     route    = _.difference(hash.replace('#', '').replace('/', '').split('/'), params);
     view     = route.join('-') || (hash === '#/' ? self.rootView : self.notFoundView);
     settings = getSettings();
-    self.trigger('render', self.info());
+    self.trigger('changed', self.info());
   };
 
   var getSettings = function () {
@@ -25,6 +25,16 @@ function Router() {
     return _.find(routes, function (r) {
       return r.url === url || (url === '#/' && (r.url === '#/' || r.url === '/'));
     });
+  };
+
+  var getParams = function () {
+    var paramsObj = {};
+    if (settings && settings.params) {
+      _.forEach(settings.params, function (paramKey, index) {
+        paramsObj[paramKey] = params[index];
+      });
+    }
+    return paramsObj;
   };
 
   self.validate = function (role) {
@@ -35,27 +45,23 @@ function Router() {
   };
 
   self.info = function () {
-    var paramsObj = {};
-    if (settings && settings.params) {
-      _.each(settings.params, function (paramKey, index) {
-        paramsObj[paramKey] = params[index];
-      });
-    }
-
     return {
       view  : view,
       url   : settings ? settings.url : undefined,
-      params: paramsObj
+      params: getParams()
     };
   };
 
-  self.go = function (route) {
+  self.go       = function (route) {
     riot.route(route);
+  };
+  self.notFound = function () {
+    riot.route('#/' + self.notFoundView);
   };
 
   self.set = function (appRoutes) {
     routes = appRoutes;
-    _.each(routes, function (value) {
+    _.forEach(routes, function (value) {
       riotRouter(value.url, render);
     });
     riotRouter(render);

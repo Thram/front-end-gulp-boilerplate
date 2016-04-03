@@ -3,7 +3,7 @@
  */
 
   // Tags
-require('tags/example/help.tag');
-require('tags/example/container.tag');
-require('tags/example/navigation.tag');
-require('tags/example/view-home.tag');
+require('example/help.tag');
+require('example/container.tag');
+require('example/navigation.tag');
+require('example/view-home.tag');
