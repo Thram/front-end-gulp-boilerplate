@@ -1,4 +1,7 @@
 # Front-End Gulp Boilerplate
+
+[![Greenkeeper badge](https://badges.greenkeeper.io/Thram/front-end-gulp-boilerplate.svg)](https://greenkeeper.io/)
+
 A nice Gulp Boilerplate for Front-End Development
 ## Setup:
 Just clone the repository or download and run:
